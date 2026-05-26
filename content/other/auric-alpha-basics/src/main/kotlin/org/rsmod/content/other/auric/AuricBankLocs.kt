@@ -22,4 +22,12 @@ object AuricBankLocs : LocReferences() {
     val brimstoneBankChest = find("brimstone_bankchest")
     val soulWarsBankChest = find("soul_wars_bankchest")
     val magicTrainingBankChest = find("magictraining_bankchest")
+    val bankDepositBox = find("bank_deposit_box")
+    val bankDepositBox2 = find("bank_deposit_box_2")
+    val bankDepositChest = find("bank_deposit_chest")
+    val krBankDepositBox = find("kr_bank_deposit_box")
+    val swanBankDepositBox = find("swan_bank_deposit_box")
+    val burghBankDepositBox = find("burgh_bank_deposit_box")
+    val ahoyBankDepositBox = find("ahoy_bank_deposit_box")
+    val corscursBankDepositBox = find("corscurs_bank_deposit_box")
 }

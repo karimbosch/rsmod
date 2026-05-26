@@ -78,6 +78,18 @@ constructor(
         onOpNpc3(auric_hub_npcs.banker) { openBank("hub_banker") }
         onOpNpc3(auric_hub_npcs.bankerTutor) { openBank("hub_banker_tutor") }
 
+        onOpLoc1(auric_skilling_locs.furnace) { explainFurnace() }
+        onOpLocU(auric_skilling_locs.furnace, auric_skilling_objs.copperOre) { smeltBronzeBar() }
+        onOpLocU(auric_skilling_locs.furnace, auric_skilling_objs.tinOre) { smeltBronzeBar() }
+
+        onOpLoc1(auric_skilling_locs.anvil) { explainAnvil() }
+        onOpLocU(auric_skilling_locs.anvil, auric_skilling_objs.bronzeBar) { smithBronzeDagger(it.invSlot) }
+
+        onOpLoc1(auric_skilling_locs.range) { explainRange() }
+        CookingRecipe.entries.forEach { recipe ->
+            onOpLocU(auric_skilling_locs.range, recipe.raw) { cookFood(it.objType, it.invSlot) }
+        }
+
         onCommand("commands") {
             desc = "Show useful Auric alpha commands"
             cheat(::showCommands)
@@ -413,6 +425,76 @@ constructor(
         )
     }
 
+    private fun ProtectedAccess.explainFurnace() {
+        mes("Use copper ore or tin ore on the furnace to smelt bronze bars.")
+    }
+
+    private suspend fun ProtectedAccess.smeltBronzeBar() {
+        val delete =
+            invDel(
+                player.inv,
+                auric_skilling_objs.copperOre,
+                count1 = 1,
+                auric_skilling_objs.tinOre,
+                count2 = 1,
+            )
+        if (!delete.success) {
+            mes("You need copper ore and tin ore to smelt a bronze bar.")
+            return
+        }
+
+        val add = invAdd(player.inv, auric_skilling_objs.bronzeBar, strict = false)
+        if (!add.success) {
+            mes("You need more inventory space to smelt a bronze bar.")
+            return
+        }
+
+        mes("You smelt the copper and tin into a bronze bar.")
+        statAdvance(stats.smithing, BRONZE_BAR_XP)
+        observability.record(player, "SMITHING", "SMELT_BRONZE_BAR", "source='furnace' xp=$BRONZE_BAR_XP")
+    }
+
+    private fun ProtectedAccess.explainAnvil() {
+        mes("Use a bronze bar on the anvil with a hammer to smith a bronze dagger.")
+    }
+
+    private suspend fun ProtectedAccess.smithBronzeDagger(slot: Int) {
+        if (objs.hammer !in player.inv) {
+            mes("You need a hammer to smith bronze bars.")
+            return
+        }
+
+        val replace = invReplaceSlot(player.inv, slot, count = 1, replacement = auric_skilling_objs.bronzeDagger)
+        if (!replace.success) {
+            return
+        }
+
+        mes("You hammer the bronze bar into a bronze dagger.")
+        statAdvance(stats.smithing, BRONZE_DAGGER_XP)
+        observability.record(player, "SMITHING", "SMITH_BRONZE_DAGGER", "source='anvil' xp=$BRONZE_DAGGER_XP")
+    }
+
+    private fun ProtectedAccess.explainRange() {
+        mes("Use raw food on the range to cook it.")
+    }
+
+    private suspend fun ProtectedAccess.cookFood(type: ObjType, slot: Int) {
+        val recipe = CookingRecipe.entries.firstOrNull { type.isType(it.raw) } ?: return
+        val replace = invReplaceSlot(player.inv, slot, count = 1, replacement = recipe.cooked)
+        if (!replace.success) {
+            return
+        }
+
+        mes(recipe.message)
+        statAdvance(stats.cooking, recipe.xp)
+        observability.record(
+            player,
+            "COOKING",
+            "COOK_FOOD",
+            "raw='${recipe.rawName}' cooked='${recipe.cookedName}' source='range' xp=${recipe.xp}",
+        )
+    }
+
     private enum class Bone(val obj: ObjType, val xp: Double, val messageName: String) {
         Regular(objs.bones, 4.5, "bones"),
         Bat(auric_prayer_objs.batBones, 5.3, "bat bones"),
@@ -446,12 +528,56 @@ constructor(
         BrimstoneBankChest(auric_bank_locs.brimstoneBankChest, "brimstone_bankchest"),
         SoulWarsBankChest(auric_bank_locs.soulWarsBankChest, "soul_wars_bankchest"),
         MagicTrainingBankChest(auric_bank_locs.magicTrainingBankChest, "magictraining_bankchest"),
+        BankDepositBox(auric_bank_locs.bankDepositBox, "bank_deposit_box"),
+        BankDepositBox2(auric_bank_locs.bankDepositBox2, "bank_deposit_box_2"),
+        BankDepositChest(auric_bank_locs.bankDepositChest, "bank_deposit_chest"),
+        KrBankDepositBox(auric_bank_locs.krBankDepositBox, "kr_bank_deposit_box"),
+        SwanBankDepositBox(auric_bank_locs.swanBankDepositBox, "swan_bank_deposit_box"),
+        BurghBankDepositBox(auric_bank_locs.burghBankDepositBox, "burgh_bank_deposit_box"),
+        AhoyBankDepositBox(auric_bank_locs.ahoyBankDepositBox, "ahoy_bank_deposit_box"),
+        CorscursBankDepositBox(auric_bank_locs.corscursBankDepositBox, "corscurs_bank_deposit_box"),
+    }
+
+    private enum class CookingRecipe(
+        val raw: ObjType,
+        val cooked: ObjType,
+        val xp: Double,
+        val rawName: String,
+        val cookedName: String,
+        val message: String,
+    ) {
+        Shrimp(
+            auric_skilling_objs.rawShrimp,
+            auric_skilling_objs.shrimp,
+            30.0,
+            "raw_shrimp",
+            "shrimp",
+            "You cook the shrimps.",
+        ),
+        Chicken(
+            auric_skilling_objs.rawChicken,
+            auric_skilling_objs.cookedChicken,
+            30.0,
+            "raw_chicken",
+            "cooked_chicken",
+            "You cook the chicken.",
+        ),
+        Beef(
+            auric_skilling_objs.rawBeef,
+            auric_skilling_objs.cookedMeat,
+            30.0,
+            "raw_beef",
+            "cooked_meat",
+            "You cook the meat.",
+        ),
     }
 
     private companion object {
         private const val DITCH_Z = 3520
         private const val DITCH_CROSS_DISTANCE = 2
         private const val ALTAR_PRAYER_XP_MULTIPLIER = 2.0
+        private const val BRONZE_BAR_XP = 6.2
+        private const val BRONZE_DAGGER_XP = 12.5
         private val HOME = CoordGrid(0, 48, 54, 15, 40)
         private val DITCH_COMMAND_COORDS = CoordGrid(HOME.x, DITCH_Z, HOME.level)
     }
