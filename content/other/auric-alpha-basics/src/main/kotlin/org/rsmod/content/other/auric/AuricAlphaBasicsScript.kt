@@ -3,6 +3,7 @@ package org.rsmod.content.other.auric
 import com.github.michaelbull.logging.InlineLogger
 import jakarta.inject.Inject
 import org.rsmod.api.config.refs.BaseInvs
+import org.rsmod.api.config.refs.interfaces
 import org.rsmod.annotations.InternalApi
 import org.rsmod.api.config.refs.modlevels
 import org.rsmod.api.config.refs.objs
@@ -13,6 +14,7 @@ import org.rsmod.api.player.protect.ProtectedAccessLauncher
 import org.rsmod.api.script.onCommand
 import org.rsmod.api.script.onOpHeld1
 import org.rsmod.api.script.onOpLoc1
+import org.rsmod.api.script.onOpLoc2
 import org.rsmod.api.script.onOpLocU
 import org.rsmod.api.script.onOpNpc1
 import org.rsmod.api.script.onOpNpc3
@@ -73,6 +75,13 @@ constructor(
         onOpNpc3(auric_hub_npcs.shopkeeper) { player.openAuricGeneralStore(it.npc) }
         onOpNpc1(auric_hub_npcs.shopAssistant) { player.openAuricGeneralStore(it.npc) }
         onOpNpc3(auric_hub_npcs.shopAssistant) { player.openAuricGeneralStore(it.npc) }
+
+        AuricBank.entries.forEach { bank ->
+            onOpLoc1(bank.loc) { openBank(bank.source) }
+            onOpLoc2(bank.loc) { openBank(bank.source) }
+        }
+        onOpNpc3(auric_hub_npcs.banker) { openBank("hub_banker") }
+        onOpNpc3(auric_hub_npcs.bankerTutor) { openBank("hub_banker_tutor") }
 
         onCommand("commands") {
             desc = "Show useful Auric alpha commands"
@@ -184,6 +193,7 @@ constructor(
         }
         mes("You bury the ${bone.messageName}.")
         statAdvance(stats.prayer, bone.xp)
+        observability.record(player, "PRAYER", "BURY_BONES", "obj='${bone.messageName}' xp=${bone.xp}")
     }
 
     private fun showCommands(cheat: Cheat) =
@@ -340,14 +350,21 @@ constructor(
         }
 
     private suspend fun ProtectedAccess.crossWildernessDitch(ditchCoords: CoordGrid) {
+        val start = player.coords
         val dest =
-            if (player.coords.z <= ditchCoords.z) {
-                player.coords.copy(z = ditchCoords.z + DITCH_CROSS_DISTANCE)
+            if (start.z <= ditchCoords.z) {
+                start.copy(z = ditchCoords.z + DITCH_CROSS_DISTANCE)
             } else {
-                player.coords.copy(z = ditchCoords.z - DITCH_CROSS_DISTANCE)
+                start.copy(z = ditchCoords.z - DITCH_CROSS_DISTANCE)
             }
         telejump(dest)
         mes("You cross the Wilderness ditch.")
+        observability.record(
+            player,
+            "WILDERNESS",
+            "CROSS_DITCH",
+            "from=${start.x},${start.z},${start.level} dest=${dest.x},${dest.z},${dest.level}",
+        )
     }
 
     private suspend fun ProtectedAccess.rechargePrayer() {
@@ -357,6 +374,12 @@ constructor(
         }
         statRestore(stats.prayer)
         mes("You recharge your Prayer points.")
+        observability.record(
+            player,
+            "PRAYER",
+            "RECHARGE",
+            "source='altar' coords=${player.coords.x},${player.coords.z},${player.coords.level}",
+        )
     }
 
     private suspend fun ProtectedAccess.offerBonesOnAltar(type: ObjType, slot: Int) {
@@ -367,10 +390,32 @@ constructor(
         }
         mes("You offer the ${bone.messageName} at the altar.")
         statAdvance(stats.prayer, bone.xp * ALTAR_PRAYER_XP_MULTIPLIER)
+        observability.record(
+            player,
+            "PRAYER",
+            "OFFER_BONES",
+            "obj='${bone.messageName}' xp=${bone.xp * ALTAR_PRAYER_XP_MULTIPLIER}",
+        )
     }
 
     private fun Player.openAuricGeneralStore(npc: org.rsmod.game.entity.Npc) {
         shops.open(this, npc, "Auric General Store", BaseInvs.generalshop1)
+        observability.record(
+            this,
+            "SHOP",
+            "OPEN_GENERAL_STORE",
+            "npc=${npc.type.id} coords=${coords.x},${coords.z},${coords.level}",
+        )
+    }
+
+    private fun ProtectedAccess.openBank(source: String) {
+        ifOpenMainSidePair(main = interfaces.bank_main, side = interfaces.bank_side)
+        observability.record(
+            player,
+            "BANK",
+            "OPEN",
+            "source='$source' coords=${player.coords.x},${player.coords.z},${player.coords.level}",
+        )
     }
 
     private enum class Bone(val obj: ObjType, val xp: Double, val messageName: String) {
@@ -386,6 +431,27 @@ constructor(
         Monks(auric_prayer_locs.monksAltar),
         CaveTemple(auric_prayer_locs.caveTempleAltar),
         WildyHub(auric_prayer_locs.wildyHubAltar),
+    }
+
+    private enum class AuricBank(val loc: org.rsmod.game.type.loc.LocType, val source: String) {
+        BankBooth(auric_bank_locs.bankBooth, "bankbooth"),
+        BankBoothEndLeft(auric_bank_locs.bankBoothEndLeft, "bankbooth_end_left"),
+        BankBoothEndRight(auric_bank_locs.bankBoothEndRight, "bankbooth_end_right"),
+        BankBoothDeadman(auric_bank_locs.bankBoothDeadman, "bankbooth_deadman"),
+        AideBankBooth(auric_bank_locs.aideBankBooth, "aide_bankbooth"),
+        NewbieBankBooth(auric_bank_locs.newbieBankBooth, "newbiebankbooth"),
+        FaiVarrockBankBooth(auric_bank_locs.faiVarrockBankBooth, "fai_varrock_bankbooth"),
+        FaiFaladorBankBooth(auric_bank_locs.faiFaladorBankBooth, "fai_falador_bankbooth"),
+        BankChest(auric_bank_locs.bankChest, "bank_chest"),
+        ThBankChest(auric_bank_locs.thBankChest, "thbankchest"),
+        CastleWarsBankChest(auric_bank_locs.castleWarsBankChest, "castlewars_bankchest"),
+        ChampionsBankChest(auric_bank_locs.championsBankChest, "champions_bankchest"),
+        DiaryGuildBankChest(auric_bank_locs.diaryGuildBankChest, "diary_guild_bankchest"),
+        WcGuildBankChest(auric_bank_locs.wcGuildBankChest, "wcguild_bankchest"),
+        WintertodtBankChest(auric_bank_locs.wintertodtBankChest, "wint_bankchest"),
+        BrimstoneBankChest(auric_bank_locs.brimstoneBankChest, "brimstone_bankchest"),
+        SoulWarsBankChest(auric_bank_locs.soulWarsBankChest, "soul_wars_bankchest"),
+        MagicTrainingBankChest(auric_bank_locs.magicTrainingBankChest, "magictraining_bankchest"),
     }
 
     private companion object {
