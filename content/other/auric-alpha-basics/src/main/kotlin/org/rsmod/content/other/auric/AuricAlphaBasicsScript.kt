@@ -71,9 +71,7 @@ constructor(
             }
         }
 
-        onOpNpc1(auric_hub_npcs.shopkeeper) { player.openAuricGeneralStore(it.npc) }
         onOpNpc3(auric_hub_npcs.shopkeeper) { player.openAuricGeneralStore(it.npc) }
-        onOpNpc1(auric_hub_npcs.shopAssistant) { player.openAuricGeneralStore(it.npc) }
         onOpNpc3(auric_hub_npcs.shopAssistant) { player.openAuricGeneralStore(it.npc) }
 
         AuricBank.entries.forEach { bank ->
