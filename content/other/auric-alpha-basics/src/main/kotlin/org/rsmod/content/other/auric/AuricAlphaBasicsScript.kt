@@ -442,7 +442,6 @@ constructor(
         NewbieBankBooth(auric_bank_locs.newbieBankBooth, "newbiebankbooth"),
         FaiVarrockBankBooth(auric_bank_locs.faiVarrockBankBooth, "fai_varrock_bankbooth"),
         FaiFaladorBankBooth(auric_bank_locs.faiFaladorBankBooth, "fai_falador_bankbooth"),
-        BankChest(auric_bank_locs.bankChest, "bank_chest"),
         ThBankChest(auric_bank_locs.thBankChest, "thbankchest"),
         CastleWarsBankChest(auric_bank_locs.castleWarsBankChest, "castlewars_bankchest"),
         ChampionsBankChest(auric_bank_locs.championsBankChest, "champions_bankchest"),

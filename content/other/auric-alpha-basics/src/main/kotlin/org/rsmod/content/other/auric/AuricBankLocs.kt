@@ -13,7 +13,6 @@ object AuricBankLocs : LocReferences() {
     val newbieBankBooth = find("newbiebankbooth")
     val faiVarrockBankBooth = find("fai_varrock_bankbooth")
     val faiFaladorBankBooth = find("fai_falador_bankbooth")
-    val bankChest = find("bank_chest")
     val thBankChest = find("thbankchest")
     val castleWarsBankChest = find("castlewars_bankchest")
     val championsBankChest = find("champions_bankchest")
